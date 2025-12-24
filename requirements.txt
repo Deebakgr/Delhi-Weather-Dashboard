@@ -1,0 +1,14 @@
+# --- Web Frameworks ---
+flask
+flask-cors
+streamlit
+
+# --- Data Processing ---
+pandas
+numpy
+openpyxl
+sqlalchemy
+
+# --- Utilities ---
+requests
+python-dateutil
