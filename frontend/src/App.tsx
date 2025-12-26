@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 
 interface WeatherData {
-  date: string;
+  datetime: string;
   weather_condition: string;
-  temperature: number;
-  humidity: number;
-  pressure: number;
+  temperature: number | string;
+  humidity: number | string;
+  pressure: number | string;
   month?: number;
-  max_temp?: number;
-  median_temp?: number;
-  min_temp?: number;
+  max_temp?: number | string;
+  median_temp?: number | string;
+  min_temp?: number | string;
 }
 
 interface ApiResponse {
@@ -82,6 +82,48 @@ const App: React.FC = () => {
     setMessage('');
   };
 
+  const getWeatherIcon = (condition: string) => {
+    if (!condition || condition === 'N/A') return '🌤️';
+    const cond = condition.toLowerCase();
+    if (cond.includes('clear') || cond.includes('sunny')) return '☀️';
+    if (cond.includes('cloud')) return '☁️';
+    if (cond.includes('rain')) return '🌧️';
+    if (cond.includes('storm')) return '⛈️';
+    if (cond.includes('snow')) return '❄️';
+    if (cond.includes('fog') || cond.includes('mist')) return '🌫️';
+    return '🌤️';
+  };
+
+  const formatValue = (value: any, type: string) => {
+    if (value === null || value === undefined || value === 'N/A') return 'N/A';
+    
+    switch (type) {
+      case 'temperature':
+        return `${value}°C`;
+      case 'humidity':
+        return `${value}%`;
+      case 'pressure':
+        return `${value} hPa`;
+      default:
+        return String(value);
+    }
+  };
+
+  const getStatsFromData = () => {
+    if (!data.length) return null;
+    
+    const temps = data.filter(d => d.temperature && d.temperature !== 'N/A').map(d => Number(d.temperature));
+    const humidities = data.filter(d => d.humidity && d.humidity !== 'N/A').map(d => Number(d.humidity));
+    
+    return {
+      totalRecords: data.length,
+      avgTemp: temps.length ? (temps.reduce((a, b) => a + b, 0) / temps.length).toFixed(1) : 'N/A',
+      maxTemp: temps.length ? Math.max(...temps) : 'N/A',
+      minTemp: temps.length ? Math.min(...temps) : 'N/A',
+      avgHumidity: humidities.length ? (humidities.reduce((a, b) => a + b, 0) / humidities.length).toFixed(1) : 'N/A'
+    };
+  };
+
   if (!dataLoaded) {
     return (
       <div className="error-container">
@@ -94,96 +136,146 @@ const App: React.FC = () => {
     );
   }
 
+  const stats = getStatsFromData();
+
   return (
     <div className="app-container">
       <div className="main-container">
-        <div className="card">
-          <div className="header">
-            <h1>🌦 Delhi Weather Dashboard</h1>
-            <p>Query by Date, Month, or Year</p>
-          </div>
-          
-          <div className="search-form">
-            <div className="form-group">
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="form-input"
-                placeholder="Select date"
-              />
+        <div className="header">
+          <h1>🌦️ Delhi Weather Dashboard</h1>
+          <p>Weather Data Analytics Platform</p>
+        </div>
+        
+        <div className="dashboard-grid">
+          <div className="search-panel">
+            <h2 className="search-title">
+              <span>🔍</span> Search Weather Data
+            </h2>
+            
+            <div className="search-form">
+              <div className="form-group">
+                <label className="form-label">Select Date</label>
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="form-input"
+                  placeholder="Select specific date"
+                />
+              </div>
+              
+              <div className="form-group">
+                <label className="form-label">Year</label>
+                <input
+                  type="number"
+                  value={year}
+                  onChange={(e) => setYear(e.target.value)}
+                  className="form-input"
+                  placeholder="e.g. 2015"
+                  min="1996"
+                  max="2030"
+                />
+              </div>
+              
+              <div className="form-group">
+                <label className="form-label">Month</label>
+                <input
+                  type="number"
+                  value={month}
+                  onChange={(e) => setMonth(e.target.value)}
+                  className="form-input"
+                  placeholder="1-12"
+                  min="1"
+                  max="12"
+                />
+              </div>
+              
+              <div className="button-group">
+                <button
+                  onClick={searchWeather}
+                  disabled={loading}
+                  className="btn btn-primary"
+                >
+                  {loading ? (
+                    <><span className="loading-spinner"></span> Searching...</>
+                  ) : (
+                    <>🔍 Search</>
+                  )}
+                </button>
+                <button
+                  onClick={clearSearch}
+                  className="btn btn-secondary"
+                >
+                  🗑️ Clear
+                </button>
+              </div>
             </div>
-            <div className="form-group">
-              <input
-                type="number"
-                value={year}
-                onChange={(e) => setYear(e.target.value)}
-                className="form-input"
-                placeholder="Year (e.g. 2015)"
-              />
-            </div>
-            <div className="form-group">
-              <input
-                type="number"
-                value={month}
-                onChange={(e) => setMonth(e.target.value)}
-                className="form-input"
-                placeholder="Month (1-12)"
-                min="1"
-                max="12"
-              />
-            </div>
-            <div className="button-group">
-              <button
-                onClick={searchWeather}
-                disabled={loading}
-                className="btn btn-primary"
-              >
-                {loading ? '🔄' : '🔍'} Search
-              </button>
-              <button
-                onClick={clearSearch}
-                className="btn btn-secondary"
-              >
-                Clear
-              </button>
-            </div>
+
+            {message && (
+              <div className={`alert ${message.includes('Error') ? 'alert-danger' : 'alert-info'}`}>
+                {message}
+              </div>
+            )}
           </div>
 
-          {message && (
-            <div className="alert alert-info">
-              {message}
+          {stats && (
+            <div className="stats-panel">
+              <h2 className="stats-title">📊 Quick Statistics</h2>
+              <div className="stats-grid">
+                <div className="stat-card">
+                  <div className="stat-value">{stats.totalRecords}</div>
+                  <div className="stat-label">Total Records</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-value">{stats.avgTemp}°</div>
+                  <div className="stat-label">Avg Temperature</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-value">{stats.maxTemp}°</div>
+                  <div className="stat-label">Max Temperature</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-value">{stats.minTemp}°</div>
+                  <div className="stat-label">Min Temperature</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-value">{stats.avgHumidity}%</div>
+                  <div className="stat-label">Avg Humidity</div>
+                </div>
+              </div>
             </div>
           )}
         </div>
 
         {data.length > 0 && (
-          <div className="card">
+          <div className="results-container">
             <div className="results-header">
-              <h2 className="results-title">
-                Results ({data.length} rows)
-              </h2>
+              <h2 className="results-title">Weather Data Results</h2>
+              <div className="results-count">{data.length} records found</div>
             </div>
             
             <div className="table-container">
               <table className="table">
                 <thead>
                   <tr>
-                    {Object.keys(data[0]).map((key) => (
-                      <th key={key}>
-                        {key.replace(/_/g, ' ').toUpperCase()}
-                      </th>
-                    ))}
+                    <th>Date & Time</th>
+                    <th>Weather</th>
+                    <th>Temperature</th>
+                    <th>Humidity</th>
+                    <th>Pressure</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.map((row, index) => (
                     <tr key={index}>
-                      {Object.values(row).map((value, i) => (
-                        <td key={i}>
-                          {value !== null && value !== undefined ? String(value) : 'N/A'}
-                        </td>
-                      ))}
+                      <td>{row.datetime || 'N/A'}</td>
+                      <td>
+                        <span className="weather-icon">{getWeatherIcon(row.weather_condition)}</span>
+                        {row.weather_condition || 'N/A'}
+                      </td>
+                      <td className="temperature">{formatValue(row.temperature, 'temperature')}</td>
+                      <td className="humidity">{formatValue(row.humidity, 'humidity')}</td>
+                      <td className="pressure">{formatValue(row.pressure, 'pressure')}</td>
                     </tr>
                   ))}
                 </tbody>
